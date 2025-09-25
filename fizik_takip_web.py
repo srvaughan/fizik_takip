@@ -87,7 +87,7 @@ if st.sidebar.button("Öğrenci Ekle"):
         st.success(f"{yeni_ogrenci} eklendi!")
 
 st.title("Fizik Ders Takip Sistemi")
-menu = st.sidebar.selectbox("Menü", ["Kayıt Ekle", "Haftalık Rapor", "Tekrar Önerisi", "Başarı Takibi"])
+menu = st.sidebar.selectbox("Menü", ["Kayıt Ekle", "Haftalık Rapor", "Aylık Rapor", "Tekrar Önerisi", "Başarı Takibi", "Konu Bazlı Detay"])
 
 if menu == "Kayıt Ekle":
     st.subheader("Yeni Kayıt Ekle")
@@ -99,7 +99,6 @@ if menu == "Kayıt Ekle":
     else:
         konu = st.selectbox("Konu", AYT_KONULAR)
 
-    # Kaynak seçimi: listeden veya yeni ekleme
     secilen_kaynak = st.selectbox("Kaynak Seç", ["Yeni Kaynak"] + st.session_state.kaynaklar)
     if secilen_kaynak == "Yeni Kaynak":
         kaynak = st.text_input("Yeni Kaynak Adı")
@@ -122,3 +121,21 @@ if menu == "Kayıt Ekle":
             if kaynak not in st.session_state.kaynaklar:
                 st.session_state.kaynaklar.append(kaynak)
             st.success("Kayıt başarıyla eklendi!")
+
+elif menu == "Tekrar Önerisi":
+    calisma_turu_sec = st.radio("Çalışma Türü", ["TYT", "AYT", "Hepsi"], index=2)
+    konular = TYT_KONULAR if calisma_turu_sec=='TYT' else AYT_KONULAR if calisma_turu_sec=='AYT' else TYT_KONULAR+AYT_KONULAR
+    df = veri_yukle()
+    df['Tarih'] = pd.to_datetime(df['Tarih'])
+    liste = []
+    for ogr in df['Öğrenci'].unique():
+        for konu in konular:
+            df_ok = df[(df['Öğrenci']==ogr)&(df['Konu']==konu)]
+            if not df_ok.empty:
+                son = df_ok['Tarih'].max()
+                if (datetime.today()-son).days > 21:  # 3 hafta
+                    liste.append((ogr, konu, son.strftime('%Y-%m-%d')))
+    if liste:
+        st.dataframe(pd.DataFrame(liste, columns=['Öğrenci','Konu','Son Çözüm Tarihi']))
+    else:
+        st.info("Tekrar önerilecek konu yok.")
