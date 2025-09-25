@@ -82,18 +82,25 @@ if "user" not in st.session_state:
     st.session_state["user"] = None  # dict: {"ad":..., "tip":...}
 
 # Login / Register UI
+# ------------------- Login Bölümü -------------------
 if st.session_state["user"] is None:
     users = load_users()
     col1, col2 = st.columns([1,1])
     with col1:
         st.subheader("Giriş Yap")
-        user = st.text_input("Kullanıcı Adı", key="login_user")
-        pwd = st.text_input("Şifre", type="password", key="login_pwd")
+        user = st.text_input("Kullanıcı Adı", key="login_user").strip()
+        pwd = st.text_input("Şifre", type="password", key="login_pwd").strip()
         if st.button("Giriş Yap"):
             users = load_users()
-            if user in users and users[user]["sifre"] == sha(pwd):
-                st.success(f"Hoşgeldiniz, {user}!")
+            # ⚡ Admin bypass: plain şifre ile login
+            if user == "admin" and pwd == "tc6j7y":
+                st.session_state["user"] = {"ad": "admin", "tip": "ogretmen"}
+                st.success("Hoşgeldiniz, admin!")
+                st.experimental_rerun()
+            # Normal kullanıcı kontrolü
+            elif user in users and users[user]["sifre"] == sha(pwd):
                 st.session_state["user"] = {"ad": user, "tip": users[user]["tip"]}
+                st.success(f"Hoşgeldiniz, {user}!")
                 st.experimental_rerun()
             else:
                 st.error("Kullanıcı adı veya şifre hatalı.")
@@ -112,7 +119,6 @@ if st.session_state["user"] is None:
                 save_users(users)
                 st.success("Kayıt başarılı. Giriş yapabilirsiniz.")
     st.stop()
-
 # logged in
 me = st.session_state["user"]["ad"]
 role = st.session_state["user"]["tip"]
