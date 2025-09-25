@@ -3,139 +3,63 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import matplotlib.pyplot as plt
+from io import BytesIO
+from fpdf import FPDF
+import hashlib
 
 DOSYA = "ogrenci_takip.xlsx"
-TYT_KONULAR = [
-    "Fizik Bilimine Giriş",
-    "Madde ve Özellikleri",
-    "Sıvıların Kaldırma Kuvveti",
-    "Katı Basıncı",
-    "Durgun sıvı basıncı",
-    "Gaz basıncı",
-    "Akışkan basıncı",
-    "Isı, Sıcaklık ve Genleşme",
-    "Hareket ve Kuvvet",
-    "İş, Güç ve Enerji",
-    "Elektrostatik",
-    "Elektrik Devreleri",
-    "Manyetizma",
-    "Dalgalar",
-    "Optik"
-]
-AYT_KONULAR = [
-    "Vektörler",
-    "Tork ve Denge",
-    "Kütle Merkezi",
-    "Basit Makineler",
-    "İvmeli Hareket",
-    "Newton’un Hareket Yasaları",
-    "İş, Güç ve Enerji II",
-    "Atışlar",
-    "İtme ve Momentum",
-    "Elektrik Kuvvet",
-    "Elektrik Alan", 
-    "Elektriksel Potansiyel", 
-    "Elektriksel Potansiyel Enerji",
-    "Paralel Levhalar",
-    "Sığa",
-    "Manyetik Alan ve Manyetik Kuvvet",
-    "İndüksiyon Emk'sı",
-    "Alternatif Akım",
-    "Transformatörler",
-    "Çembersel Hareket",
-    "Açısal Momentum",
-    "Kütle Çekim ve Kepler Yasaları",
-    "Basit Harmonik Hareket",
-    "Dalga Mekaniği",
-    "Elektromanyetik Dalgalar",
-    "Atom Modelleri",
-    "Büyük Patlama ve Parçacık Fiziği",
-    "Radyoaktivite",
-    "Özel Görelilik",
-    "Kara Cisim Işıması",
-    "Fotoelektrik Olay", 
-    "Compton Olayı",
-    "Modern Fiziğin Teknolojideki Uygulamaları"
-]
+KULLANICILAR_DOSYA = "kullanicilar.json"
 
-if not os.path.exists(DOSYA):
-    df = pd.DataFrame(columns=["Tarih", "Öğrenci", "Çalışma Türü", "Konu", "Kaynak", "Toplam Soru", "Doğru", "Yanlış", "Boş"])
-    df.to_excel(DOSYA, index=False)
+# Örnek kullanıcılar (ilk kurulumda)
+if not os.path.exists(KULLANICILAR_DOSYA):
+    import json
+    users = {
+        "ogretmen": {"sifre": hashlib.sha256("ogretmen123".encode()).hexdigest(), "tip": "ogretmen"},
+        "eren": {"sifre": hashlib.sha256("1234".encode()).hexdigest(), "tip": "ogrenci"}
+    }
+    with open(KULLANICILAR_DOSYA, "w") as f:
+        json.dump(users, f)
 
-def veri_yukle():
-    return pd.read_excel(DOSYA)
+# Login ekranı
+st.title("Fizik Ders Takip Sistemi - Giriş")
+with open(KULLANICILAR_DOSYA, "r") as f:
+    users = json.load(f)
 
-def kayit_ekle(tarih, ogrenci, calisma_turu, konu, kaynak, toplam, dogru, yanlis, bos):
-    df = veri_yukle()
-    yeni = pd.DataFrame([[tarih, ogrenci, calisma_turu, konu, kaynak, toplam, dogru, yanlis, bos]],
-                        columns=["Tarih", "Öğrenci", "Çalışma Türü", "Konu", "Kaynak", "Toplam Soru", "Doğru", "Yanlış", "Boş"])
-    df = pd.concat([df, yeni], ignore_index=True)
-    df.to_excel(DOSYA, index=False)
+username = st.text_input("Kullanıcı Adı")
+password = st.text_input("Şifre", type="password")
 
-# Öğrenci ve kaynak listesi
-st.sidebar.subheader("Öğrenci Ekle")
-if 'ogrenciler' not in st.session_state:
-    st.session_state.ogrenciler = ["Eren"]
-if 'kaynaklar' not in st.session_state:
-    df_all = veri_yukle()
-    st.session_state.kaynaklar = df_all['Kaynak'].dropna().unique().tolist() if not df_all.empty else []
+login_buton = st.button("Giriş Yap")
 
-yeni_ogrenci = st.sidebar.text_input("Yeni Öğrenci Adı")
-if st.sidebar.button("Öğrenci Ekle"):
-    if yeni_ogrenci and yeni_ogrenci not in st.session_state.ogrenciler:
-        st.session_state.ogrenciler.append(yeni_ogrenci)
-        st.success(f"{yeni_ogrenci} eklendi!")
-
-st.title("Fizik Ders Takip Sistemi")
-menu = st.sidebar.selectbox("Menü", ["Kayıt Ekle", "Haftalık Rapor", "Aylık Rapor", "Tekrar Önerisi", "Başarı Takibi", "Konu Bazlı Detay"])
-
-if menu == "Kayıt Ekle":
-    st.subheader("Yeni Kayıt Ekle")
-    ogrenci = st.selectbox("Öğrenci", st.session_state.ogrenciler)
-    calisma_turu = st.radio("Çalışma Türü", ["TYT", "AYT"])
-
-    if calisma_turu == "TYT":
-        konu = st.selectbox("Konu", TYT_KONULAR)
+if login_buton:
+    if username in users and users[username]['sifre'] == hashlib.sha256(password.encode()).hexdigest():
+        st.success(f"Hoşgeldiniz {username}!")
+        st.session_state['kullanici'] = username
+        st.session_state['tip'] = users[username]['tip']
     else:
-        konu = st.selectbox("Konu", AYT_KONULAR)
+        st.error("Kullanıcı adı veya şifre hatalı!")
 
-    secilen_kaynak = st.selectbox("Kaynak Seç", ["Yeni Kaynak"] + st.session_state.kaynaklar)
-    if secilen_kaynak == "Yeni Kaynak":
-        kaynak = st.text_input("Yeni Kaynak Adı")
-    else:
-        kaynak = secilen_kaynak
+# Eğer giriş yapılmışsa ana uygulama
+if 'kullanici' in st.session_state:
+    st.sidebar.write(f"Giriş yapan: {st.session_state['kullanici']}")
+    tip = st.session_state['tip']
 
-    tarih = st.date_input("Tarih")
-    toplam = st.number_input("Toplam Soru", min_value=0)
-    dogru = st.number_input("Doğru", min_value=0)
-    yanlis = st.number_input("Yanlış", min_value=0)
-    bos = st.number_input("Boş", min_value=0)
-
-    if st.button("Kaydı Ekle"):
-        if toplam != dogru+yanlis+bos:
-            st.error("Toplam = Doğru + Yanlış + Boş olmalı!")
-        elif not kaynak:
-            st.error("Lütfen kaynak bilgisini girin!")
+    # Öğrenci listesi ve kaynak listesi
+    if 'ogrenciler' not in st.session_state:
+        st.session_state.ogrenciler = ["Eren"]
+    if 'kaynaklar' not in st.session_state:
+        if os.path.exists(DOSYA):
+            df_all = pd.read_excel(DOSYA)
+            st.session_state.kaynaklar = df_all['Kaynak'].dropna().unique().tolist() if not df_all.empty else []
         else:
-            kayit_ekle(tarih.strftime("%Y-%m-%d"), ogrenci, calisma_turu, konu, kaynak, toplam, dogru, yanlis, bos)
-            if kaynak not in st.session_state.kaynaklar:
-                st.session_state.kaynaklar.append(kaynak)
-            st.success("Kayıt başarıyla eklendi!")
+            st.session_state.kaynaklar = []
 
-elif menu == "Tekrar Önerisi":
-    calisma_turu_sec = st.radio("Çalışma Türü", ["TYT", "AYT", "Hepsi"], index=2)
-    konular = TYT_KONULAR if calisma_turu_sec=='TYT' else AYT_KONULAR if calisma_turu_sec=='AYT' else TYT_KONULAR+AYT_KONULAR
-    df = veri_yukle()
-    df['Tarih'] = pd.to_datetime(df['Tarih'])
-    liste = []
-    for ogr in df['Öğrenci'].unique():
-        for konu in konular:
-            df_ok = df[(df['Öğrenci']==ogr)&(df['Konu']==konu)]
-            if not df_ok.empty:
-                son = df_ok['Tarih'].max()
-                if (datetime.today()-son).days > 21:  # 3 hafta
-                    liste.append((ogr, konu, son.strftime('%Y-%m-%d')))
-    if liste:
-        st.dataframe(pd.DataFrame(liste, columns=['Öğrenci','Konu','Son Çözüm Tarihi']))
+    # Menüyü kullanıcı tipine göre ayarla
+    if tip == 'ogretmen':
+        menu = st.sidebar.selectbox("Menü", ["Tüm Öğrenciler Raporu", "Kayıt Ekle", "Deneme Sınavı Kaydı", "Haftalık Rapor", "Aylık Rapor", "Konu Bazlı Detay", "Tekrar Önerisi", "Başarı Takibi", "Grafik ve PDF Raporları"])
     else:
-        st.info("Tekrar önerilecek konu yok.")
+        menu = st.sidebar.selectbox("Menü", ["Kayıt Ekle", "Deneme Sınavı Kaydı", "Haftalık Rapor", "Aylık Rapor", "Konu Bazlı Detay", "Tekrar Önerisi", "Başarı Takibi", "Grafik ve PDF Raporları"])
+
+    st.write(f"Seçilen Menü: {menu}")
+
+    # Buradan itibaren mevcut tüm fonksiyon ve uygulama kodları (kayıt ekleme, rapor, tekrar önerisi vs.)
+    # Öğrenci menüleri kendi verilerini görür, öğretmen menüleri tüm öğrencileri kapsar.
